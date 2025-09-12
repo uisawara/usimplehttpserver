@@ -1,0 +1,94 @@
+name: Release on Merge
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-on-merge-${{ github.event.pull_request.base.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bump-and-release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      - name: Determine bump level (minor if label 'breaking' exists)
+        id: bump
+        run: |
+          if jq -r '.pull_request.labels // [] | .[].name' "$GITHUB_EVENT_PATH" | grep -i -q '^breaking$'; then
+            echo "level=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read and bump version
+        id: version
+        run: |
+          FILE="Assets/UnityPackages/mmzkworks.SimpleHttpServer/package.json"
+          current=$(jq -r '.version' "$FILE")
+          IFS='.' read -r major minor patch <<< "$current"
+
+          case "${{ steps.bump.outputs.level }}" in
+            minor)
+              minor=$((minor+1))
+              patch=0
+              ;;
+            patch|*)
+              patch=$((patch+1))
+              ;;
+          esac
+
+          new="$major.$minor.$patch"
+
+          tmp="$(mktemp)"
+          jq --arg v "$new" '.version = $v' "$FILE" > "$tmp"
+          mv "$tmp" "$FILE"
+
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets/UnityPackages/mmzkworks.SimpleHttpServer/package.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: bump package version to v${{ steps.version.outputs.new }}"
+            git push origin HEAD:${{ github.event.pull_request.base.ref }}
+          fi
+
+      - name: Create Git tag
+        run: |
+          git fetch --tags
+          git tag -a "v${{ steps.version.outputs.new }}" -m "Release v${{ steps.version.outputs.new }} (from PR #${{ github.event.pull_request.number }})" || true
+          git push origin "v${{ steps.version.outputs.new }}" || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.version.outputs.new }}"
+          name: "v${{ steps.version.outputs.new }}"
+          body: |
+            - Source PR: #${{ github.event.pull_request.number }}
+            - Bump: ${{ steps.bump.outputs.level }}
+            - Version: v${{ steps.version.outputs.new }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
