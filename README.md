@@ -83,3 +83,8 @@ public sealed class User
     public int Age { get; set; }
 }
 ```
+
+## About AI Generation
+
+- This document has been machine translated.
+- This repo contains generated code by ChatGPT and Cursor.
