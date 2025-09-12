@@ -7,6 +7,10 @@
     {
       "displayName": "SimpleHttpServerSample",
       "path": "Samples/SimpleHttpServerSample"
+    },
+    {
+      "displayName": "ApplicationStateApiSample",
+      "path": "Samples/ApplicationStateApiSample"
     }
   ]
 }
