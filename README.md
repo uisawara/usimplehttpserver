@@ -2,6 +2,13 @@
 
 ## Installation
 
+### dependencies
+
+先に以下をimportしておいてください。
+
+- "com.cysharp.unitask": "2.5.10"
+- "com.unity.nuget.newtonsoft-json": "3.2.1"
+
 ### upm
 
 ```
