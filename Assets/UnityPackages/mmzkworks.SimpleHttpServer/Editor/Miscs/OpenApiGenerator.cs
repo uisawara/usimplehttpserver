@@ -38,7 +38,7 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                     var fullPath = NormalizePath(prefixAttr.Prefix, tmpl);
                     if (!paths.TryGetValue(fullPath, out var piObj))
                         paths[fullPath] = piObj = new Dictionary<string, object?>(StringComparer.Ordinal);
-                    var pathItem = (Dictionary<string, object?>)piObj;
+                    var pathItem = (Dictionary<string, object?>)piObj!;
 
                     var op = new Dictionary<string, object?>();
                     var summary = m.GetCustomAttribute<SummaryAttribute>()?.Text ?? ctrlSummary;
