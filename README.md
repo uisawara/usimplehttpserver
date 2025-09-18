@@ -91,7 +91,16 @@ public sealed class User
 }
 ```
 
+## APIドキュメント生成 (openapi.yml export)
+
+APIドキュメントの作成を容易にするため OpenAPI yamlのエクスポートができます。
+
+### 使いかた
+
+- Unity EditorのMenuからTools/uSimpleHttpServer/Generate OpenAPI YAML を選択すると、openapi.ymlが出力されます。
+- 一度実行すると Assets/Settings/OpenApiExportSettings が作成されます。
+  - このファイルを編集することで出力設定を変えることができます。
+
 ## About AI Generation
 
-- This document has been machine translated.
-- This repo contains generated code by ChatGPT and Cursor.
+- このリポジトリには生成AIからの出力コードが含まれています。
