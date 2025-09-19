@@ -1,21 +1,63 @@
 # SimpleHttpServer for Unity
 
+!!現在実験的に開発中!!
+Unityアプリにシンプルなhttp APIサーバー機能を持たせるためのpackageです。
+
+- Unity製アプリケーションにAPIサーバー機能を付加することで、Curl, Webブラウザ等からアクセスすることでアプリ操作・クエリできるようにします。
+- Unityエディタ拡張によりAPIエンドポイント情報をOpenAPI.yml形式でエクスポートできるようにします。
+
+## Concept
+
+- Unityアプリの既存コードから簡素な手順でAPI公開
+- APIを通して他アプリとの連動性を得る
+- OpenAPI.ymlを通して既存のWeb開発圏のツール・手法を流用可能にする
+- シンプル。APIサーバー機能のみを扱うことにし、静的ファイル、テンプレートエンジン他、多様な機能を持つ一般的なWebサーバーを目指さない。
+
+```mermaid
+graph LR
+
+subgraph UnityApp
+s
+c
+svr
+end
+
+s[[c#-routing-attribute]] -->|API仕様情報の付加| c[c# code] -->|export| o[OpenAPI.yml]
+o -->|input| og[openapi-generator]
+o -->|input| rd[Redoctly]
+
+svr[[C#-api-server-script]] -.->|自動列挙| s
+
+client -->|http| svr
+
+subgraph ExternalTools
+og
+rd
+end
+```
+
 ## Installation
 
 ### dependencies
 
 先に以下をimportしておいてください。
 
-- "com.cysharp.unitask": "2.5.10"
-- "com.unity.nuget.newtonsoft-json": "3.2.1"
+- com.cysharp.unitask
+  - インストール方法は公式 https://github.com/Cysharp/UniTask.git を参照ください。
+
+- com.unity.nuget.newtonsoft-json
+  - Package Managerを開き、Install package by name... から com.unity.nuget.newtonsoft-json をインストールします。
+
 
 ### upm
+
+本パッケージは Package Managerを開き、Install package from git URL... から以下をインストールします。
 
 ```
 https://github.com/uisawara/usimplehttpserver.git?path=Assets/UnityPackages/mmzkworks.SimpleHttpServer
 ```
 
-## Sample code
+## コード例
 
 ### サーバーの起動・停止
 
@@ -90,6 +132,21 @@ public sealed class User
     public int Age { get; set; }
 }
 ```
+
+## Sample code
+
+upmにサンプルコードが付属しています。
+Unity EditorでPackage Managerからインポートすることができます。
+
+### ApplicationStateApiSample
+
+- 幾つかのサンプルAPI実装が入っています。
+
+| APIエンドポイント | レスポンス                                                   |
+| ----------------- | ------------------------------------------------------------ |
+| /api/echo/{text}  | textで指定されたテキストをエコーバックで返します。           |
+| /api/state        | アプリ状態一式をJSON形式で取得します。                       |
+| /api/state/{key}  | 種類を指定してアプリ状態をJSON形式で取得します。<br />keyには以下が使えます。<br />application: アプリ基本情報<br />environments: アプリの実行時環境変数、コマンドライン引数<br />runtime: 実行時情報 |
 
 ## APIドキュメント生成 (openapi.yml export)
 
