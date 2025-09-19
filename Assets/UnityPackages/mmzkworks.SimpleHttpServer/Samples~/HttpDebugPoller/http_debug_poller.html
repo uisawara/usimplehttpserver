@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTTP Debug Poller</title>
+  <style>
+    body { font-family: sans-serif; background: #0b1020; color: #eee; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: 20px auto; padding: 10px; }
+    .card { background: #111827; border-radius: 10px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    label { font-size: 12px; color: #ccc; display: block; margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #333; background: #0b1222; color: #eee; }
+    textarea { min-height: 100px; font-family: monospace; }
+    button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; }
+    button.primary { background: #06b6d4; color: #000; }
+    button.danger { background: #ef4444; color: #fff; }
+    #response { background: #0a0f1c; padding: 12px; border-radius: 6px; white-space: pre-wrap; font-family: monospace; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>HTTP Debug Poller</h1>
+      <label for="url">URL</label>
+      <input id="url" type="text" value="http://127.0.0.1:8080/api/echo/hello" />
+
+      <label for="port">ポート</label>
+      <input id="port" type="number" placeholder="3000" />
+
+      <label for="method">HTTP Method</label>
+      <select id="method">
+        <option>GET</option>
+        <option>POST</option>
+        <option>PUT</option>
+        <option>PATCH</option>
+        <option>DELETE</option>
+      </select>
+
+      <label for="body">リクエストボディ</label>
+      <textarea id="body"></textarea>
+
+      <label for="interval">ポーリング間隔 (ms)</label>
+      <input id="interval" type="number" placeholder="1000" />
+
+      <div>
+        <button class="primary" id="sendOnce">1回送信</button>
+        <button id="start">開始</button>
+        <button class="danger" id="stop" disabled>停止</button>
+      </div>
+
+      <div id="response">レスポンス表示欄</div>
+    </div>
+  </div>
+
+  <script>
+    const urlEl = document.getElementById("url");
+    const portEl = document.getElementById("port");
+    const methodEl = document.getElementById("method");
+    const bodyEl = document.getElementById("body");
+    const intervalEl = document.getElementById("interval");
+    const respEl = document.getElementById("response");
+    const sendOnceBtn = document.getElementById("sendOnce");
+    const startBtn = document.getElementById("start");
+    const stopBtn = document.getElementById("stop");
+
+    let timer = null;
+
+    function buildUrl() {
+      let raw = urlEl.value.trim();
+      const port = portEl.value.trim();
+      if (!raw) throw new Error("URLを入力してください");
+      if (!/^https?:\/\//i.test(raw)) raw = "http://" + raw;
+      const u = new URL(raw);
+      if (port) u.port = port;
+      return u.toString();
+    }
+
+    async function sendRequest() {
+      let url;
+      try { url = buildUrl(); }
+      catch (e) { respEl.textContent = e.message; return; }
+
+      const method = methodEl.value;
+      const bodyRaw = bodyEl.value;
+      const opts = { method };
+      if (method !== "GET" && method !== "HEAD" && bodyRaw) {
+        try {
+          opts.body = JSON.stringify(JSON.parse(bodyRaw));
+          opts.headers = { "Content-Type": "application/json" };
+        } catch {
+          opts.body = bodyRaw;
+        }
+      }
+
+      const started = performance.now();
+      try {
+        const res = await fetch(url, opts);
+        const text = await res.text();
+        const elapsed = Math.round(performance.now() - started);
+        try {
+          const obj = JSON.parse(text);
+          respEl.textContent = `${res.status} ${res.statusText} (${elapsed} ms)\n` + JSON.stringify(obj, null, 2);
+        } catch {
+          respEl.textContent = `${res.status} ${res.statusText} (${elapsed} ms)\n` + text;
+        }
+      } catch (err) {
+        respEl.textContent = "ERR: " + err;
+      }
+    }
+
+    sendOnceBtn.addEventListener("click", sendRequest);
+    startBtn.addEventListener("click", () => {
+      const ms = Number(intervalEl.value) || 1000;
+      if (timer) clearInterval(timer);
+      sendRequest();
+      timer = setInterval(sendRequest, ms);
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    });
+    stopBtn.addEventListener("click", () => {
+      clearInterval(timer);
+      timer = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>
