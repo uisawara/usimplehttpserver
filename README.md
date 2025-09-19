@@ -24,7 +24,7 @@ end
 
 s[[c#-routing-attribute]] -->|API仕様情報の付加| c[c# code] -->|export| o[OpenAPI.yml]
 o -->|input| og[openapi-generator]
-o -->|input| rd[Redoctly]
+o -->|input| rd[redoc]
 
 svr[[C#-api-server-script]] -.->|自動列挙| s
 
