@@ -335,7 +335,16 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
             sb.Append("HTTP/1.1 ").Append(status).Append(' ').Append("OK").Append("\r\n");
             sb.Append("Content-Type: ").Append(contentType).Append("\r\n");
             sb.Append("Content-Length: ").Append(contentLength).Append("\r\n");
-            sb.Append("Connection: close\r\n\r\n");
+            sb.Append("Connection: close\r\n");
+            
+            // CORS header
+            sb.Append("Access-Control-Allow-Origin: *\r\n");
+            sb.Append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n");
+            sb.Append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+            
+            // Terminate header
+            sb.Append("\r\n");
+
             var head = Encoding.ASCII.GetBytes(sb.ToString());
             await stream.WriteAsync(head, 0, head.Length, ct);
         }
