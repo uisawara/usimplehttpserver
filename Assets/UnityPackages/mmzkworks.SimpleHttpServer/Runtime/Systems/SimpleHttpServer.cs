@@ -1,8 +1,8 @@
 #nullable enable
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -10,7 +10,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
 {
@@ -123,6 +123,10 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
                         break;
                     }
 
+                    // 小さいパケットのまとめ待ちを無効化
+                    client.NoDelay = true;
+                    client.Client.LingerState = new LingerOption(false, 0); // Close時に即FIN
+
                     _ = HandleClientAsync(client, ct);
                 }
             }
@@ -178,7 +182,9 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
                     var queryVals = ParseQuery(query);
 
                     var body = "";
-                    if (headers.TryGetValue("Content-Length", out var lenStr) && int.TryParse(lenStr, out var len) &&
+                    if ((method != "POST" && method != "PUT" && method != "PATCH") &&
+                        headers.TryGetValue("Content-Length", out var lenStr) &&
+                        int.TryParse(lenStr, out var len) &&
                         len > 0)
                     {
                         var buf = new byte[len];
@@ -283,40 +289,131 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
         }
 
         private static async UniTask<(bool ok, string method, string target, Dictionary<string, string> headers)>
-            ReadHeadAsync(
-                NetworkStream stream, CancellationToken ct)
+            ReadHeadAsync(NetworkStream stream, CancellationToken ct)
         {
-            using var ms = new MemoryStream(4096);
-            var buf = new byte[1];
-            var state = 0;
-            while (true)
-            {
-                var r = await stream.ReadAsync(buf, 0, 1, ct);
-                if (r <= 0) break;
-                ms.WriteByte(buf[0]);
-                state = (state << 8) | buf[0];
-                if ((state & 0xFFFFFFFF) == 0x0D0A0D0A) break;
-                if (ms.Length > 64 * 1024) break;
-            }
+            const int MaxHeaderBytes = 64 * 1024;
+            const int ChunkSize = 4096;
 
-            var head = Encoding.ASCII.GetString(ms.ToArray());
-            var lines = head.Split(new[] { "\r\n" }, StringSplitOptions.None);
-            if (lines.Length == 0 || string.IsNullOrEmpty(lines[0]))
-                return (false, "", "", new Dictionary<string, string>());
-            var first = lines[0].Split(' ');
-            if (first.Length < 3) return (false, "", "", new Dictionary<string, string>());
-            var method = first[0].ToUpperInvariant();
-            var target = first[1];
-            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            for (var i = 1; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                if (string.IsNullOrEmpty(line)) break;
-                var idx = line.IndexOf(':');
-                if (idx > 0) headers[line[..idx].Trim()] = line[(idx + 1)..].Trim();
-            }
+            var pool = ArrayPool<byte>.Shared;
+            byte[] buf = pool.Rent(MaxHeaderBytes);
+            int filled = 0;
+            int headerEnd = -1;
 
-            return (true, method, target, headers);
+            try
+            {
+                // ---- まとめ読み & \r\n\r\n 検出（跨り対応）----
+                while (true)
+                {
+                    if (filled >= MaxHeaderBytes)
+                        return (false, "", "", new Dictionary<string, string>());
+
+                    int toRead = Math.Min(ChunkSize, MaxHeaderBytes - filled);
+#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
+            int read = await stream.ReadAsync(buf.AsMemory(filled, toRead), ct);
+#else
+                    int read = await stream.ReadAsync(buf, filled, toRead, ct);
+#endif
+                    if (read <= 0)
+                        return (false, "", "", new Dictionary<string, string>());
+
+                    int scanStart = Math.Max(0, filled - 3);
+                    filled += read;
+
+                    int idx = FindCrlfCrlf(buf, scanStart, filled);
+                    if (idx >= 0)
+                    {
+                        headerEnd = idx + 4;
+                        break;
+                    }
+                }
+
+                // ---- リクエストライン ----
+                int line0End = FindCrlf(buf, 0, headerEnd);
+                if (line0End <= 0) return (false, "", "", new Dictionary<string, string>());
+
+                // METHOD SP TARGET SP VERSION
+                int sp1 = IndexOfByte(buf, (byte)' ', 0, line0End);
+                if (sp1 <= 0) return (false, "", "", new Dictionary<string, string>());
+                int sp2 = IndexOfByte(buf, (byte)' ', sp1 + 1, line0End);
+                if (sp2 < 0) return (false, "", "", new Dictionary<string, string>());
+
+                string method = Encoding.ASCII.GetString(buf, 0, sp1).ToUpperInvariant();
+                string target = Encoding.ASCII.GetString(buf, sp1 + 1, sp2 - (sp1 + 1));
+                // string version = Encoding.ASCII.GetString(buf, sp2 + 1, line0End - (sp2 + 1)); // 必要なら
+
+                // ---- ヘッダ行 ----
+                var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                int pos = line0End + 2; // 次行先頭
+
+                while (pos < headerEnd - 2)
+                {
+                    int eol = FindCrlf(buf, pos, headerEnd);
+                    if (eol < 0) break;
+                    if (eol == pos) break; // 空行（終端）
+
+                    int colon = IndexOfByte(buf, (byte)':', pos, eol);
+                    if (colon > pos)
+                    {
+                        // key
+                        var kb = TrimAsciiBounds(buf, pos, colon);
+                        // value（':' の後から）
+                        var vb = TrimAsciiBounds(buf, colon + 1, eol);
+
+                        if (kb.len > 0)
+                        {
+                            string key = Encoding.ASCII.GetString(buf, kb.start, kb.len);
+                            string val = vb.len > 0 ? Encoding.ASCII.GetString(buf, vb.start, vb.len) : string.Empty;
+                            headers[key] = val;
+                        }
+                    }
+
+                    pos = eol + 2;
+                }
+
+                return (true, method, target, headers);
+            }
+            finally
+            {
+                pool.Return(buf);
+            }
+        }
+
+// ========= ヘルパ（クラススコープ、Span未使用） =========
+
+        private static int FindCrlf(byte[] b, int start, int end)
+        {
+            // [start, end) の中で \r\n を検索
+            for (int i = start; i + 1 < end; i++)
+                if (b[i] == 13 && b[i + 1] == 10)
+                    return i;
+            return -1;
+        }
+
+        private static int FindCrlfCrlf(byte[] b, int start, int end)
+        {
+            // [start, end) の中で \r\n\r\n を検索
+            for (int i = start; i + 3 < end; i++)
+                if (b[i] == 13 && b[i + 1] == 10 && b[i + 2] == 13 && b[i + 3] == 10)
+                    return i;
+            return -1;
+        }
+
+        private static int IndexOfByte(byte[] b, byte value, int start, int end)
+        {
+            for (int i = start; i < end; i++)
+                if (b[i] == value)
+                    return i;
+            return -1;
+        }
+
+        private static (int start, int len) TrimAsciiBounds(byte[] b, int start, int end)
+        {
+            // [start, end) 範囲から ASCII の空白（space/tab）を左右トリムして返す
+            int s = start, e = end - 1;
+            while (s <= e && (b[s] == 32 || b[s] == 9)) s++;
+            while (e >= s && (b[e] == 32 || b[e] == 9)) e--;
+            int len = Math.Max(0, e - s + 1);
+            return (s, len);
         }
 
         private static async UniTask WriteTextAsync(NetworkStream stream, int status, string text, string contentType,
@@ -336,12 +433,12 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
             sb.Append("Content-Type: ").Append(contentType).Append("\r\n");
             sb.Append("Content-Length: ").Append(contentLength).Append("\r\n");
             sb.Append("Connection: close\r\n");
-            
+
             // CORS header
             sb.Append("Access-Control-Allow-Origin: *\r\n");
             sb.Append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n");
             sb.Append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
-            
+
             // Terminate header
             sb.Append("\r\n");
 
