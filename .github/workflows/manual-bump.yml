@@ -42,7 +42,7 @@ jobs:
         run: |
           echo "new version -> ${{ steps.bump.outputs.new_version }}"
           set -euo pipefail
-          NEW="${{ steps.bump.outputs.new }}"
+          NEW="${{ steps.bump.outputs.new_version }}"
           BR="release/v${NEW}"
 
           git config user.name "github-actions[bot]"
@@ -56,7 +56,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const version = "${{ steps.bump.outputs.new }}";
+            const version = "${{ steps.bump.outputs.new_version }}";
             const head = "release/v" + version;
             const base = "${{ inputs.base_branch }}";
             const body = [
