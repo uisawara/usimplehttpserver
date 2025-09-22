@@ -40,7 +40,7 @@ jobs:
 
       - name: Create release branch, commit and push
         run: |
-          echo "new version -> ${{ steps.bump.outputs.new }}"
+          echo "new version -> ${{ steps.bump.outputs.new_version }}"
           set -euo pipefail
           NEW="${{ steps.bump.outputs.new }}"
           BR="release/v${NEW}"
