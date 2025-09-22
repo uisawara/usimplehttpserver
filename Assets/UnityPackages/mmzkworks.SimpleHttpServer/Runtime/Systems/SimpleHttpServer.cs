@@ -46,34 +46,23 @@ namespace mmzkworks.SimpleHttpServer
 
             foreach (var asm in assemblies)
             foreach (var type in asm.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
-            {
                 RegisterControllerClass(type);
-            }
 
             _routes.Sort((a, b) => b.SegmentCount.CompareTo(a.SegmentCount));
         }
 
         public void RegisterControllersFrom(Type[] types)
         {
-            if (types == null || types.Length == 0)
-            {
-                throw new ArgumentNullException();
-            }
+            if (types == null || types.Length == 0) throw new ArgumentNullException();
 
-            foreach (var type in types)
-            {
-                RegisterControllerClass(type);
-            }
+            foreach (var type in types) RegisterControllerClass(type);
 
             _routes.Sort((a, b) => b.SegmentCount.CompareTo(a.SegmentCount));
         }
 
         public void RegisterControllersFrom(object[] instances)
         {
-            if (instances == null || instances.Length == 0)
-            {
-                throw new ArgumentNullException(nameof(instances));
-            }
+            if (instances == null || instances.Length == 0) throw new ArgumentNullException(nameof(instances));
 
             foreach (var instance in instances)
             {
@@ -127,24 +116,16 @@ namespace mmzkworks.SimpleHttpServer
             foreach (var m in type.GetMethods(BindingFlags.Instance | BindingFlags.Public))
             {
                 foreach (var a in m.GetCustomAttributes<HttpGetAttribute>())
-                {
                     _routes.Add(Route.Create("GET", prefix, a.Template, instance, m));
-                }
 
                 foreach (var a in m.GetCustomAttributes<HttpPostAttribute>())
-                {
                     _routes.Add(Route.Create("POST", prefix, a.Template, instance, m));
-                }
 
                 foreach (var a in m.GetCustomAttributes<HttpPutAttribute>())
-                {
                     _routes.Add(Route.Create("PUT", prefix, a.Template, instance, m));
-                }
 
                 foreach (var a in m.GetCustomAttributes<HttpDeleteAttribute>())
-                {
                     _routes.Add(Route.Create("DELETE", prefix, a.Template, instance, m));
-                }
             }
         }
 
@@ -248,7 +229,7 @@ namespace mmzkworks.SimpleHttpServer
                     var queryVals = ParseQuery(query);
 
                     var body = "";
-                    if ((method != "POST" && method != "PUT" && method != "PATCH") &&
+                    if (method != "POST" && method != "PUT" && method != "PATCH" &&
                         headers.TryGetValue("Content-Length", out var lenStr) &&
                         int.TryParse(lenStr, out var len) &&
                         len > 0)
@@ -361,9 +342,9 @@ namespace mmzkworks.SimpleHttpServer
             const int ChunkSize = 4096;
 
             var pool = ArrayPool<byte>.Shared;
-            byte[] buf = pool.Rent(MaxHeaderBytes);
-            int filled = 0;
-            int headerEnd = -1;
+            var buf = pool.Rent(MaxHeaderBytes);
+            var filled = 0;
+            var headerEnd = -1;
 
             try
             {
@@ -373,19 +354,19 @@ namespace mmzkworks.SimpleHttpServer
                     if (filled >= MaxHeaderBytes)
                         return (false, "", "", new Dictionary<string, string>());
 
-                    int toRead = Math.Min(ChunkSize, MaxHeaderBytes - filled);
+                    var toRead = Math.Min(ChunkSize, MaxHeaderBytes - filled);
 #if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
             int read = await stream.ReadAsync(buf.AsMemory(filled, toRead), ct);
 #else
-                    int read = await stream.ReadAsync(buf, filled, toRead, ct);
+                    var read = await stream.ReadAsync(buf, filled, toRead, ct);
 #endif
                     if (read <= 0)
                         return (false, "", "", new Dictionary<string, string>());
 
-                    int scanStart = Math.Max(0, filled - 3);
+                    var scanStart = Math.Max(0, filled - 3);
                     filled += read;
 
-                    int idx = FindCrlfCrlf(buf, scanStart, filled);
+                    var idx = FindCrlfCrlf(buf, scanStart, filled);
                     if (idx >= 0)
                     {
                         headerEnd = idx + 4;
@@ -394,30 +375,30 @@ namespace mmzkworks.SimpleHttpServer
                 }
 
                 // ---- リクエストライン ----
-                int line0End = FindCrlf(buf, 0, headerEnd);
+                var line0End = FindCrlf(buf, 0, headerEnd);
                 if (line0End <= 0) return (false, "", "", new Dictionary<string, string>());
 
                 // METHOD SP TARGET SP VERSION
-                int sp1 = IndexOfByte(buf, (byte)' ', 0, line0End);
+                var sp1 = IndexOfByte(buf, (byte)' ', 0, line0End);
                 if (sp1 <= 0) return (false, "", "", new Dictionary<string, string>());
-                int sp2 = IndexOfByte(buf, (byte)' ', sp1 + 1, line0End);
+                var sp2 = IndexOfByte(buf, (byte)' ', sp1 + 1, line0End);
                 if (sp2 < 0) return (false, "", "", new Dictionary<string, string>());
 
-                string method = Encoding.ASCII.GetString(buf, 0, sp1).ToUpperInvariant();
-                string target = Encoding.ASCII.GetString(buf, sp1 + 1, sp2 - (sp1 + 1));
+                var method = Encoding.ASCII.GetString(buf, 0, sp1).ToUpperInvariant();
+                var target = Encoding.ASCII.GetString(buf, sp1 + 1, sp2 - (sp1 + 1));
                 // string version = Encoding.ASCII.GetString(buf, sp2 + 1, line0End - (sp2 + 1)); // 必要なら
 
                 // ---- ヘッダ行 ----
                 var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                int pos = line0End + 2; // 次行先頭
+                var pos = line0End + 2; // 次行先頭
 
                 while (pos < headerEnd - 2)
                 {
-                    int eol = FindCrlf(buf, pos, headerEnd);
+                    var eol = FindCrlf(buf, pos, headerEnd);
                     if (eol < 0) break;
                     if (eol == pos) break; // 空行（終端）
 
-                    int colon = IndexOfByte(buf, (byte)':', pos, eol);
+                    var colon = IndexOfByte(buf, (byte)':', pos, eol);
                     if (colon > pos)
                     {
                         // key
@@ -427,8 +408,8 @@ namespace mmzkworks.SimpleHttpServer
 
                         if (kb.len > 0)
                         {
-                            string key = Encoding.ASCII.GetString(buf, kb.start, kb.len);
-                            string val = vb.len > 0 ? Encoding.ASCII.GetString(buf, vb.start, vb.len) : string.Empty;
+                            var key = Encoding.ASCII.GetString(buf, kb.start, kb.len);
+                            var val = vb.len > 0 ? Encoding.ASCII.GetString(buf, vb.start, vb.len) : string.Empty;
                             headers[key] = val;
                         }
                     }
@@ -449,7 +430,7 @@ namespace mmzkworks.SimpleHttpServer
         private static int FindCrlf(byte[] b, int start, int end)
         {
             // [start, end) の中で \r\n を検索
-            for (int i = start; i + 1 < end; i++)
+            for (var i = start; i + 1 < end; i++)
                 if (b[i] == 13 && b[i + 1] == 10)
                     return i;
             return -1;
@@ -458,7 +439,7 @@ namespace mmzkworks.SimpleHttpServer
         private static int FindCrlfCrlf(byte[] b, int start, int end)
         {
             // [start, end) の中で \r\n\r\n を検索
-            for (int i = start; i + 3 < end; i++)
+            for (var i = start; i + 3 < end; i++)
                 if (b[i] == 13 && b[i + 1] == 10 && b[i + 2] == 13 && b[i + 3] == 10)
                     return i;
             return -1;
@@ -466,7 +447,7 @@ namespace mmzkworks.SimpleHttpServer
 
         private static int IndexOfByte(byte[] b, byte value, int start, int end)
         {
-            for (int i = start; i < end; i++)
+            for (var i = start; i < end; i++)
                 if (b[i] == value)
                     return i;
             return -1;
@@ -478,7 +459,7 @@ namespace mmzkworks.SimpleHttpServer
             int s = start, e = end - 1;
             while (s <= e && (b[s] == 32 || b[s] == 9)) s++;
             while (e >= s && (b[e] == 32 || b[e] == 9)) e--;
-            int len = Math.Max(0, e - s + 1);
+            var len = Math.Max(0, e - s + 1);
             return (s, len);
         }
 

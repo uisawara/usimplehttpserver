@@ -1,5 +1,4 @@
 #nullable enable
-using System;
 using System.Reflection;
 using UnityEngine;
 
@@ -42,10 +41,7 @@ namespace mmzkworks.SimpleHttpServer
             server = new SimpleHttpServer(port);
             server.RegisterControllersFrom(Assembly.GetExecutingAssembly());
 
-            if (enabledAtStartup)
-            {
-                server.Start();
-            }
+            if (enabledAtStartup) server.Start();
         }
 
         private void OnDestroy()

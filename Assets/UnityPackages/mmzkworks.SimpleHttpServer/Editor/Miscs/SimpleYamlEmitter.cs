@@ -11,9 +11,12 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
     {
         private const int IndentSize = 2;
 
-        public static void WriteYaml(object? obj, TextWriter w) => WriteNode(obj, w, 0, topLevel:true);
+        public static void WriteYaml(object? obj, TextWriter w)
+        {
+            WriteNode(obj, w, 0, true);
+        }
 
-        static void WriteNode(object? obj, TextWriter w, int indent, bool topLevel = false)
+        private static void WriteNode(object? obj, TextWriter w, int indent, bool topLevel = false)
         {
             switch (obj)
             {
@@ -46,15 +49,20 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                     // POCO fallback
                     var dict2 = new Dictionary<string, object?>();
                     foreach (var p in obj.GetType().GetProperties())
-                        if (p.CanRead) dict2[p.Name] = p.GetValue(obj);
+                        if (p.CanRead)
+                            dict2[p.Name] = p.GetValue(obj);
                     WriteMap(dict2, w, indent);
                     return;
             }
         }
 
-        static void WriteMap(IDictionary dict, TextWriter w, int indent)
+        private static void WriteMap(IDictionary dict, TextWriter w, int indent)
         {
-            if (dict.Count == 0) { w.WriteLine("{}"); return; }
+            if (dict.Count == 0)
+            {
+                w.WriteLine("{}");
+                return;
+            }
 
             foreach (DictionaryEntry de in dict)
             {
@@ -75,9 +83,9 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             }
         }
 
-        static void WriteSeq(IEnumerable list, TextWriter w, int indent)
+        private static void WriteSeq(IEnumerable list, TextWriter w, int indent)
         {
-            bool any = false;
+            var any = false;
             foreach (var item in list)
             {
                 any = true;
@@ -94,53 +102,72 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                     WriteNode(item, w, indent + IndentSize);
                 }
             }
+
             if (!any) w.WriteLine("[]");
         }
 
-        static bool IsScalar(object? v) =>
-            v is null or string or bool
-            || v is int or long or short or byte or float or double or decimal;
+        private static bool IsScalar(object? v)
+        {
+            return v is null or string or bool
+                   || v is int or long or short or byte or float or double or decimal;
+        }
 
-        static void WriteKey(TextWriter w, string key)
+        private static void WriteKey(TextWriter w, string key)
         {
             // 単純キーとして安全ならそのまま、必要ならクォート
             if (RequiresQuote(key)) w.Write(Quote(key));
             else w.Write(key);
         }
 
-        static void WriteScalar(TextWriter w, object? v)
+        private static void WriteScalar(TextWriter w, object? v)
         {
-            if (v is null) { w.Write("null"); return; }
+            if (v is null)
+            {
+                w.Write("null");
+                return;
+            }
+
             if (v is string s)
             {
                 if (RequiresQuote(s)) w.Write(Quote(s));
                 else w.Write(s);
                 return;
             }
-            if (v is bool b) { w.Write(b ? "true" : "false"); return; }
+
+            if (v is bool b)
+            {
+                w.Write(b ? "true" : "false");
+                return;
+            }
 
             // 数値
             w.Write(Convert.ToString(v, CultureInfo.InvariantCulture));
         }
 
-        static void Indent(TextWriter w, int n)
+        private static void Indent(TextWriter w, int n)
         {
-            for (int i = 0; i < n; i++) w.Write(' ');
+            for (var i = 0; i < n; i++) w.Write(' ');
         }
 
-        static bool RequiresQuote(string s)
+        private static bool RequiresQuote(string s)
         {
             if (string.IsNullOrEmpty(s)) return true;
             if (char.IsWhiteSpace(s[0]) || char.IsWhiteSpace(s[^1])) return true;
             if (s.Contains('\n')) return true;
             // YAML的に特別扱いされる文字や見出し語
-            if (s.IndexOfAny(new[] { ':', '-', '?', '#', ',', '[', ']', '{', '}', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`' }) >= 0) return true;
+            if (s.IndexOfAny(new[]
+                {
+                    ':', '-', '?', '#', ',', '[', ']', '{', '}', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`'
+                }) >= 0) return true;
             // 数値や true/false と誤解されるもの
             if (bool.TryParse(s, out _)) return true;
             if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out _)) return true;
             return false;
         }
 
-        static string Quote(string s) => "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        private static string Quote(string s)
+        {
+            return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        }
     }
 }
