@@ -45,7 +45,7 @@ namespace mmzkworks.SimpleHttpServer.Tests
                 for (var i = 0; i < requestCount; i++)
                 {
                     await sem.WaitAsync();
-                    tasks.Add(UniTask.Run(async () =>
+                    tasks.Add(UniTask.RunOnThreadPool(async () =>
                     {
                         var sw = Stopwatch.StartNew();
                         try
