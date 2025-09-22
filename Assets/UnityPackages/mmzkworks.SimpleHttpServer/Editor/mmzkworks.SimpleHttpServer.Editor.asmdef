@@ -1,5 +1,5 @@
 {
-    "name": "SimpleHttpServer",
+    "name": "mmzkworks.SimpleHttpServer.Editor",
     "rootNamespace": "",
     "references": [
         "GUID:74146492d85d00144a515e4753492c5d"
