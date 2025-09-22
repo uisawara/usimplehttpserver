@@ -28,7 +28,8 @@ jobs:
     if: github.actor == github.repository_owner   # 実行ユーザーがリポジトリオーナーのときだけ実行
     runs-on: ubuntu-latest
     steps:
-      - run: echo "OK: owner only"
+      - run: |
+          echo "OK: owner only"
 
   guard-non-owner:
     if: github.actor != github.repository_owner
