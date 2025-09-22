@@ -64,7 +64,8 @@ jobs:
               `- Path: \`${{ inputs.package_path }}\``,
               `- Level: \`${{ inputs.level }}\``,
             ].join('\n');
-            const res = await github.pulls.create({
+
+            const res = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `release: v${version}`,
