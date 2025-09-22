@@ -1,8 +1,8 @@
-name: publish-release
+name: release-publish
 on:
   pull_request:
     types: [closed]
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: write
