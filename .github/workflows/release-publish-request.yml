@@ -1,4 +1,4 @@
-name: manual-bump
+name: release-publish-request
 on:
   workflow_dispatch:
     inputs:
