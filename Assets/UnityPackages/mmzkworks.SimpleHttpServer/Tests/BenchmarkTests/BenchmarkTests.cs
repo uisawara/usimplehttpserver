@@ -20,8 +20,11 @@ namespace mmzkworks.SimpleHttpServer.Tests
 		public IEnumerator Ping_Benchmark_100x_10cc_Succeeds() => UniTask.ToCoroutine(async () =>
 		{
 			var port = GetFreePort();
-			using var server = new UnityPackages.mmzkworks.SimpleHttpServer.Runtime.SimpleHttpServer(port);
-			server.RegisterControllersFrom(typeof(BenchmarkController).Assembly);
+			using var server = new SimpleHttpServer(port);
+			server.RegisterControllersFrom(new []
+			{
+				new BenchmarkController()
+			});
 			server.Start();
 			await UniTask.Delay(100);
 

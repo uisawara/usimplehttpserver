@@ -4,12 +4,9 @@
     "references": [
         "UniTask",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
         "mmzkworks.SimpleHttpServer"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
