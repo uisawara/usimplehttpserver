@@ -1,0 +1,50 @@
+name: "SemVer bump for package.json"
+description: "Bump version in a package.json with SemVer (major/minor/patch)"
+inputs:
+  file:
+    description: "Path to package.json"
+    required: true
+  level:
+    description: "bump level: major | minor | patch"
+    required: true
+    default: "patch"
+outputs:
+  current_version:
+    description: "Current version before bump"
+    value: ${{ steps.bump.outputs.current }}
+  new_version:
+    description: "New version after bump"
+    value: ${{ steps.bump.outputs.new }}
+runs:
+  using: "composite"
+  steps:
+    - id: bump
+      shell: bash
+      run: |
+        set -euo pipefail
+        FILE="${{ inputs.file }}"
+        if [ ! -f "$FILE" ]; then
+          echo "::error::No package.json at $FILE"
+          exit 1
+        fi
+        CUR=$(jq -r '.version' "$FILE")
+        if [[ ! "$CUR" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::Invalid semver in $FILE: $CUR"
+          exit 1
+        fi
+        IFS='.' read -r MA MI PA <<< "$CUR"
+
+        LEVEL="${{ inputs.level }}"
+        case "$LEVEL" in
+          major) MA=$((MA+1)); MI=0; PA=0 ;;
+          minor) MI=$((MI+1)); PA=0 ;;
+          patch) PA=$((PA+1)) ;;
+          *) echo "::error::Unknown bump level: $LEVEL"; exit 1 ;;
+        esac
+
+        NEW="$MA.$MI.$PA"
+        tmp=$(mktemp)
+        jq --arg v "$NEW" '.version = $v' "$FILE" > "$tmp" && mv "$tmp" "$FILE"
+
+        echo "current=$CUR" >> "$GITHUB_OUTPUT"
+        echo "new=$NEW" >> "$GITHUB_OUTPUT"
