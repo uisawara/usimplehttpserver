@@ -1,18 +1,18 @@
 {
-    "name": "mmzkworks.SimpleHttpServer.Editor",
-    "rootNamespace": "",
-    "references": [
-        "GUID:74146492d85d00144a515e4753492c5d"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
-    "excludePlatforms": [],
-    "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
-    "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+  "name": "mmzkworks.SimpleHttpServer.Editor",
+  "rootNamespace": "",
+  "references": [
+    "GUID:74146492d85d00144a515e4753492c5d"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
 }

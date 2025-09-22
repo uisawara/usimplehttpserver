@@ -5,14 +5,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
-using mmzkworks.SimpleHttpServer;
-
 
 namespace mmzkworks.SimpleHttpServer.OpenApi
 {
     public static class OpenApiGenerator
     {
-        static readonly Regex PathParamRx = new(@"\{([^}]+)\}", RegexOptions.Compiled);
+        private static readonly Regex PathParamRx = new(@"\{([^}]+)\}", RegexOptions.Compiled);
 
         public static Dictionary<string, object?> BuildOpenApi(string title, string version,
             IEnumerable<Assembly> scanAssemblies)
@@ -84,7 +82,7 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                         var desc = p.GetCustomAttribute<ParamAttribute>()?.Description;
                         AddIfNotNull(pObj, "description", desc);
 
-                        pObj["schema"] = EnsureSchema(schemas, p.ParameterType, inlinePrimitive: true);
+                        pObj["schema"] = EnsureSchema(schemas, p.ParameterType, true);
                         parameters.Add(pObj);
                     }
 
@@ -102,7 +100,6 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                                 ["description"] = r.Description ?? $"HTTP {r.StatusCode}"
                             };
                             if (r.BodyType != null)
-                            {
                                 resp["content"] = new Dictionary<string, object?>
                                 {
                                     ["application/json"] = new Dictionary<string, object?>
@@ -110,7 +107,6 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                                         ["schema"] = EnsureSchema(schemas, r.BodyType)
                                     }
                                 };
-                            }
 
                             responses[r.StatusCode.ToString()] = resp;
                         }
@@ -156,13 +152,13 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
         }
 
         // 属性のHTTPメソッドを拾う（Path/Template/Route/Valueを柔軟に見る）
-        static (string? http, string? path) GetHttpAttr(MethodInfo m)
+        private static (string? http, string? path) GetHttpAttr(MethodInfo m)
         {
-            foreach (var attr in m.GetCustomAttributes(inherit: true))
+            foreach (var attr in m.GetCustomAttributes(true))
             {
                 var t = attr.GetType();
                 var name = t.Name;
-                string? method = name switch
+                var method = name switch
                 {
                     var s when s.Equals("HttpGetAttribute", StringComparison.OrdinalIgnoreCase) => "get",
                     var s when s.Equals("HttpPostAttribute", StringComparison.OrdinalIgnoreCase) => "post",
@@ -173,14 +169,14 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
                 };
                 if (method == null) continue;
 
-                string? path = GetStringProp(t, attr, "Path")
-                               ?? GetStringProp(t, attr, "Template")
-                               ?? GetStringProp(t, attr, "Route")
-                               ?? GetStringProp(t, attr, "Value");
+                var path = GetStringProp(t, attr, "Path")
+                           ?? GetStringProp(t, attr, "Template")
+                           ?? GetStringProp(t, attr, "Route")
+                           ?? GetStringProp(t, attr, "Value");
 
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    var routeAttr = m.GetCustomAttributes(inherit: true)
+                    var routeAttr = m.GetCustomAttributes(true)
                         .FirstOrDefault(a =>
                             a.GetType().Name.Equals("RouteAttribute", StringComparison.OrdinalIgnoreCase));
                     if (routeAttr != null)
@@ -199,12 +195,14 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             return (null, null);
 
             static string? GetStringProp(Type t, object instance, string propName)
-                => t.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+            {
+                return t.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
                     ?.GetValue(instance) as string;
+            }
         }
 
         // 二重スラッシュ防止
-        static string NormalizePath(string prefix, string template)
+        private static string NormalizePath(string prefix, string template)
         {
             var a = (prefix ?? string.Empty).Trim('/');
             var b = (template ?? string.Empty).Trim('/');
@@ -214,7 +212,7 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             return "/" + a + "/" + b;
         }
 
-        static object EnsureSchema(Dictionary<string, object?> repo, Type type, bool inlinePrimitive = false)
+        private static object EnsureSchema(Dictionary<string, object?> repo, Type type, bool inlinePrimitive = false)
         {
             var underlying = Nullable.GetUnderlyingType(type);
             if (underlying != null) type = underlying;
@@ -222,22 +220,18 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             if (TryPrimitive(type, out var prim)) return prim;
 
             if (type.IsEnum)
-            {
                 return new Dictionary<string, object?>
                 {
                     ["type"] = "string",
                     ["enum"] = Enum.GetNames(type)
                 };
-            }
 
             if (type.IsArray)
-            {
                 return new Dictionary<string, object?>
                 {
                     ["type"] = "array",
                     ["items"] = EnsureSchema(repo, type.GetElementType()!)
                 };
-            }
 
             if (IsGeneric(type, typeof(List<>)) || IsGeneric(type, typeof(IEnumerable<>)))
             {
@@ -278,56 +272,59 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
 
             return new Dictionary<string, object?> { ["$ref"] = $"#/components/schemas/{name}" };
 
-            static bool IsGeneric(Type t, Type def) => t.IsGenericType && t.GetGenericTypeDefinition() == def;
+            static bool IsGeneric(Type t, Type def)
+            {
+                return t.IsGenericType && t.GetGenericTypeDefinition() == def;
+            }
         }
 
-        static bool TryPrimitive(Type t, out Dictionary<string, object?> schema)
+        private static bool TryPrimitive(Type t, out Dictionary<string, object?> schema)
         {
             if (t == typeof(string))
             {
-                schema = new() { ["type"] = "string" };
+                schema = new Dictionary<string, object?> { ["type"] = "string" };
                 return true;
             }
 
             if (t == typeof(bool))
             {
-                schema = new() { ["type"] = "boolean" };
+                schema = new Dictionary<string, object?> { ["type"] = "boolean" };
                 return true;
             }
 
             if (t == typeof(int) || t == typeof(short) || t == typeof(byte))
             {
-                schema = new() { ["type"] = "integer", ["format"] = "int32" };
+                schema = new Dictionary<string, object?> { ["type"] = "integer", ["format"] = "int32" };
                 return true;
             }
 
             if (t == typeof(long))
             {
-                schema = new() { ["type"] = "integer", ["format"] = "int64" };
+                schema = new Dictionary<string, object?> { ["type"] = "integer", ["format"] = "int64" };
                 return true;
             }
 
             if (t == typeof(float))
             {
-                schema = new() { ["type"] = "number", ["format"] = "float" };
+                schema = new Dictionary<string, object?> { ["type"] = "number", ["format"] = "float" };
                 return true;
             }
 
             if (t == typeof(double) || t == typeof(decimal))
             {
-                schema = new() { ["type"] = "number", ["format"] = "double" };
+                schema = new Dictionary<string, object?> { ["type"] = "number", ["format"] = "double" };
                 return true;
             }
 
             if (t == typeof(Guid))
             {
-                schema = new() { ["type"] = "string", ["format"] = "uuid" };
+                schema = new Dictionary<string, object?> { ["type"] = "string", ["format"] = "uuid" };
                 return true;
             }
 
             if (t == typeof(DateTime) || t == typeof(DateTimeOffset))
             {
-                schema = new() { ["type"] = "string", ["format"] = "date-time" };
+                schema = new Dictionary<string, object?> { ["type"] = "string", ["format"] = "date-time" };
                 return true;
             }
 
@@ -335,7 +332,7 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             return false;
         }
 
-        static string ToSchemaName(Type t)
+        private static string ToSchemaName(Type t)
         {
             if (!t.IsGenericType) return t.Name;
             var gen = string.Join("And", t.GetGenericArguments().Select(ToSchemaName));
@@ -343,7 +340,7 @@ namespace mmzkworks.SimpleHttpServer.OpenApi
             return $"{bare}Of{gen}";
         }
 
-        static void AddIfNotNull(Dictionary<string, object?> d, string k, object? v)
+        private static void AddIfNotNull(Dictionary<string, object?> d, string k, object? v)
         {
             if (v is string s && string.IsNullOrWhiteSpace(s)) return;
             if (v != null) d[k] = v;
