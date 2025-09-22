@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class RoutePrefixAttribute : Attribute

@@ -12,7 +12,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Debug = UnityEngine.Debug;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     public sealed class SimpleHttpServer : IDisposable
     {

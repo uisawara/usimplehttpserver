@@ -3,7 +3,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     public sealed class AppApiServer : MonoBehaviour
     {
