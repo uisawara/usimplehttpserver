@@ -1,0 +1,47 @@
+name: publish-release
+on:
+  pull_request:
+    types: [closed]
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Extract version from branch name
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF="${{ github.event.pull_request.head.ref }}"   # e.g. release/v1.2.3
+          V="${REF#release/v}"
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Failed to parse version from branch: $REF" >&2
+            exit 1
+          fi
+          echo "v=$V" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.v }}"
+          git tag "v$V"
+          git push origin "v$V"
+
+      - name: Create GitHub Release (auto notes)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "v${{ steps.ver.outputs.v }}" --generate-notes

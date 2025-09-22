@@ -1,0 +1,75 @@
+name: manual-bump
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "SemVer bump level"
+        required: true
+        default: "patch"
+        type: choice
+        options: [patch, minor, major]
+      package_path:
+        description: "Path to package.json"
+        required: true
+        default: "Assets/UnityPackages/mmzkworks.SimpleHttpServer/package.json"
+        type: string
+      base_branch:
+        description: "Base branch to target (usually main)"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump_and_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # bump only (no commit here)
+      - name: Bump version in package.json
+        id: bump
+        uses: ./.github/actions/semver-bump
+        with:
+          file: ${{ inputs.package_path }}
+          level: ${{ inputs.level }}
+
+      - name: Create release branch, commit and push
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.bump.outputs.new }}"
+          BR="release/v${NEW}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BR"
+          git add "${{ inputs.package_path }}"
+          git commit -m "chore: bump Unity package version to v${NEW}"
+          git push -u origin "$BR"
+
+      - name: Open PR to base branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = "${{ steps.bump.outputs.new }}";
+            const head = "release/v" + version;
+            const base = "${{ inputs.base_branch }}";
+            const body = [
+              `This PR bumps Unity package version to **v${version}**.`,
+              ``,
+              `- Path: \`${{ inputs.package_path }}\``,
+              `- Level: \`${{ inputs.level }}\``,
+            ].join('\n');
+            const res = await github.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `release: v${version}`,
+              head,
+              base,
+              body,
+            });
+            core.notice(`Opened PR #${res.data.number}`);
