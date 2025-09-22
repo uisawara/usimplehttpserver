@@ -12,7 +12,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Debug = UnityEngine.Debug;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     public sealed class SimpleHttpServer : IDisposable
     {
@@ -47,39 +47,105 @@ namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
             foreach (var asm in assemblies)
             foreach (var type in asm.GetTypes().Where(t => t.IsClass && !t.IsAbstract))
             {
-                var prefixAttr = type.GetCustomAttribute<RoutePrefixAttribute>();
-                var prefix = prefixAttr?.Prefix ?? "";
-                object? instance = null;
-
-                foreach (var m in type.GetMethods(BindingFlags.Instance | BindingFlags.Public))
-                {
-                    foreach (var a in m.GetCustomAttributes<HttpGetAttribute>())
-                    {
-                        instance ??= Activator.CreateInstance(type);
-                        _routes.Add(Route.Create("GET", prefix, a.Template, instance!, m));
-                    }
-
-                    foreach (var a in m.GetCustomAttributes<HttpPostAttribute>())
-                    {
-                        instance ??= Activator.CreateInstance(type);
-                        _routes.Add(Route.Create("POST", prefix, a.Template, instance!, m));
-                    }
-
-                    foreach (var a in m.GetCustomAttributes<HttpPutAttribute>())
-                    {
-                        instance ??= Activator.CreateInstance(type);
-                        _routes.Add(Route.Create("PUT", prefix, a.Template, instance!, m));
-                    }
-
-                    foreach (var a in m.GetCustomAttributes<HttpDeleteAttribute>())
-                    {
-                        instance ??= Activator.CreateInstance(type);
-                        _routes.Add(Route.Create("DELETE", prefix, a.Template, instance!, m));
-                    }
-                }
+                RegisterControllerClass(type);
             }
 
             _routes.Sort((a, b) => b.SegmentCount.CompareTo(a.SegmentCount));
+        }
+
+        public void RegisterControllersFrom(Type[] types)
+        {
+            if (types == null || types.Length == 0)
+            {
+                throw new ArgumentNullException();
+            }
+
+            foreach (var type in types)
+            {
+                RegisterControllerClass(type);
+            }
+
+            _routes.Sort((a, b) => b.SegmentCount.CompareTo(a.SegmentCount));
+        }
+
+        public void RegisterControllersFrom(object[] instances)
+        {
+            if (instances == null || instances.Length == 0)
+            {
+                throw new ArgumentNullException(nameof(instances));
+            }
+
+            foreach (var instance in instances)
+            {
+                if (instance == null) continue;
+                RegisterControllerInstance(instance);
+            }
+
+            _routes.Sort((a, b) => b.SegmentCount.CompareTo(a.SegmentCount));
+        }
+
+        private void RegisterControllerClass(Type type)
+        {
+            var prefixAttr = type.GetCustomAttribute<RoutePrefixAttribute>();
+            var prefix = prefixAttr?.Prefix ?? "";
+            object? instance = null;
+
+            foreach (var m in type.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+            {
+                foreach (var a in m.GetCustomAttributes<HttpGetAttribute>())
+                {
+                    instance ??= Activator.CreateInstance(type);
+                    _routes.Add(Route.Create("GET", prefix, a.Template, instance!, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpPostAttribute>())
+                {
+                    instance ??= Activator.CreateInstance(type);
+                    _routes.Add(Route.Create("POST", prefix, a.Template, instance!, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpPutAttribute>())
+                {
+                    instance ??= Activator.CreateInstance(type);
+                    _routes.Add(Route.Create("PUT", prefix, a.Template, instance!, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpDeleteAttribute>())
+                {
+                    instance ??= Activator.CreateInstance(type);
+                    _routes.Add(Route.Create("DELETE", prefix, a.Template, instance!, m));
+                }
+            }
+        }
+
+        private void RegisterControllerInstance(object instance)
+        {
+            var type = instance.GetType();
+            var prefixAttr = type.GetCustomAttribute<RoutePrefixAttribute>();
+            var prefix = prefixAttr?.Prefix ?? "";
+
+            foreach (var m in type.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+            {
+                foreach (var a in m.GetCustomAttributes<HttpGetAttribute>())
+                {
+                    _routes.Add(Route.Create("GET", prefix, a.Template, instance, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpPostAttribute>())
+                {
+                    _routes.Add(Route.Create("POST", prefix, a.Template, instance, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpPutAttribute>())
+                {
+                    _routes.Add(Route.Create("PUT", prefix, a.Template, instance, m));
+                }
+
+                foreach (var a in m.GetCustomAttributes<HttpDeleteAttribute>())
+                {
+                    _routes.Add(Route.Create("DELETE", prefix, a.Template, instance, m));
+                }
+            }
         }
 
         public void Start()

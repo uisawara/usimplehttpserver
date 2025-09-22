@@ -1,7 +1,7 @@
 {
   "name": "works.mmzk.simplehttpserver",
   "displayName": "simple http(API) server",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "unity": "2022.3",
   "samples": [
     {

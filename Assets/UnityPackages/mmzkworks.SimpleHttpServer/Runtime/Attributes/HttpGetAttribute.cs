@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public sealed class HttpGetAttribute : Attribute

@@ -3,7 +3,7 @@ using System;
 using System.Linq;
 using mmzkworks.SimpleHttpServer.OpenApi;
 
-namespace UnityPackages.mmzkworks.SimpleHttpServer.Runtime
+namespace mmzkworks.SimpleHttpServer
 {
     [RoutePrefix("/api")]
     public sealed class CommonApiController
