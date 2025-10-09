@@ -1,0 +1,177 @@
+#nullable enable
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+
+namespace mmzkworks.SimpleHttpServer.OpenApi
+{
+    public static class SimpleYamlRuntimeEmitter
+    {
+        private const int IndentSize = 2;
+
+        public static string WriteToString(object? obj)
+        {
+            using var sw = new StringWriter();
+            WriteYaml(obj, sw);
+            return sw.ToString();
+        }
+
+        public static void WriteYaml(object? obj, TextWriter w)
+        {
+            WriteNode(obj, w, 0, true);
+        }
+
+        private static void WriteNode(object? obj, TextWriter w, int indent, bool topLevel = false)
+        {
+            switch (obj)
+            {
+                case null:
+                    w.WriteLine("null");
+                    return;
+
+                case string s:
+                    WriteScalar(w, s);
+                    w.WriteLine();
+                    return;
+
+                case bool b:
+                    w.WriteLine(b ? "true" : "false");
+                    return;
+
+                case int or long or short or byte or float or double or decimal:
+                    w.WriteLine(Convert.ToString(obj, CultureInfo.InvariantCulture));
+                    return;
+
+                case IDictionary dict:
+                    WriteMap(dict, w, indent);
+                    return;
+
+                case IEnumerable list:
+                    WriteSeq(list, w, indent);
+                    return;
+
+                default:
+                    var dict2 = new Dictionary<string, object?>();
+                    foreach (var p in obj.GetType().GetProperties())
+                        if (p.CanRead)
+                            dict2[p.Name] = p.GetValue(obj);
+                    WriteMap(dict2, w, indent);
+                    return;
+            }
+        }
+
+        private static void WriteMap(IDictionary dict, TextWriter w, int indent)
+        {
+            if (dict.Count == 0)
+            {
+                w.WriteLine("{}");
+                return;
+            }
+
+            foreach (DictionaryEntry de in dict)
+            {
+                Indent(w, indent);
+                WriteKey(w, de.Key?.ToString() ?? "null");
+                w.Write(": ");
+
+                if (IsScalar(de.Value))
+                {
+                    WriteScalar(w, de.Value);
+                    w.WriteLine();
+                }
+                else
+                {
+                    w.WriteLine();
+                    WriteNode(de.Value, w, indent + IndentSize);
+                }
+            }
+        }
+
+        private static void WriteSeq(IEnumerable list, TextWriter w, int indent)
+        {
+            var any = false;
+            foreach (var item in list)
+            {
+                any = true;
+                Indent(w, indent);
+                w.Write("- ");
+                if (IsScalar(item))
+                {
+                    WriteScalar(w, item);
+                    w.WriteLine();
+                }
+                else
+                {
+                    w.WriteLine();
+                    WriteNode(item, w, indent + IndentSize);
+                }
+            }
+
+            if (!any) w.WriteLine("[]");
+        }
+
+        private static bool IsScalar(object? v)
+        {
+            return v is null or string or bool
+                   || v is int or long or short or byte or float or double or decimal;
+        }
+
+        private static void WriteKey(TextWriter w, string key)
+        {
+            if (RequiresQuote(key)) w.Write(Quote(key));
+            else w.Write(key);
+        }
+
+        private static void WriteScalar(TextWriter w, object? v)
+        {
+            if (v is null)
+            {
+                w.Write("null");
+                return;
+            }
+
+            if (v is string s)
+            {
+                if (RequiresQuote(s)) w.Write(Quote(s));
+                else w.Write(s);
+                return;
+            }
+
+            if (v is bool b)
+            {
+                w.Write(b ? "true" : "false");
+                return;
+            }
+
+            w.Write(Convert.ToString(v, CultureInfo.InvariantCulture));
+        }
+
+        private static void Indent(TextWriter w, int n)
+        {
+            for (var i = 0; i < n; i++) w.Write(' ');
+        }
+
+        private static bool RequiresQuote(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return true;
+            if (char.IsWhiteSpace(s[0]) || char.IsWhiteSpace(s[^1])) return true;
+            if (s.Contains('\n')) return true;
+            if (s.IndexOfAny(new[]
+                {
+                    ':', '-', '?', '#', ',', '[', ']', '{', '}', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`'
+                }) >= 0) return true;
+            if (bool.TryParse(s, out _)) return true;
+            if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out _)) return true;
+            return false;
+        }
+
+        private static string Quote(string s)
+        {
+            return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        }
+    }
+}
+
+
