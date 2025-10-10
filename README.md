@@ -148,6 +148,11 @@ Unity EditorでPackage Managerからインポートすることができます�
 | /api/state        | アプリ状態一式をJSON形式で取得します。                       |
 | /api/state/{key}  | 種類を指定してアプリ状態をJSON形式で取得します。<br />keyには以下が使えます。<br />application: アプリ基本情報<br />environments: アプリの実行時環境変数、コマンドライン引数<br />runtime: 実行時情報 |
 
+### OpenApi endpoint
+
+これを導入するとAPI経由で OpenAPI Specification 形式のAPI仕様を取得することができるようになります。
+エンドポイントは /openapi.yml です。
+
 ## APIドキュメント生成 (openapi.yml export)
 
 APIドキュメントの作成を容易にするため OpenAPI yamlのエクスポートができます。
