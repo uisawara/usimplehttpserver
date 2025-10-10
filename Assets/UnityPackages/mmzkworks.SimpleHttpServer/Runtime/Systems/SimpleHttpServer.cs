@@ -279,7 +279,12 @@ namespace mmzkworks.SimpleHttpServer
                         return;
                     }
 
-                    if (result is string s)
+                    if (result is ContentResult contentResult)
+                    {
+                        await WriteTextAsync(stream, contentResult.StatusCode, contentResult.Content,
+                            contentResult.ContentType, ct);
+                    }
+                    else if (result is string s)
                     {
                         await WriteTextAsync(stream, 200, s, "text/plain; charset=utf-8", ct);
                     }
