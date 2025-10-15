@@ -1,6 +1,6 @@
 {
-  "name": "works.mmzk.simplehttpserver",
-  "displayName": "simple http(API) server",
+  "name": "mmzkworks.usimplehttpserver",
+  "displayName": "usimplehttpserver: Simple http server for Unity",
   "version": "0.1.2",
   "unity": "2022.3",
   "samples": [
