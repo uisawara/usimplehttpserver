@@ -54,7 +54,7 @@ end
 本パッケージは Package Managerを開き、Install package from git URL... から以下をインストールします。
 
 ```
-https://github.com/uisawara/usimplehttpserver.git?path=Assets/UnityPackages/mmzkworks.SimpleHttpServer
+https://github.com/uisawara/usimplehttpserver.git?path=Assets/UnityPackages/mmzkworks.usimplehttpserver
 ```
 
 ## コード例
