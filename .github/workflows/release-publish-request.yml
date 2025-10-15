@@ -11,7 +11,7 @@ on:
       package_path:
         description: "Path to package.json"
         required: true
-        default: "Assets/UnityPackages/mmzkworks.SimpleHttpServer/package.json"
+        default: "Assets/UnityPackages/mmzkworks.usimplehttpserver/package.json"
         type: string
       base_branch:
         description: "Base branch to target (usually main)"
