@@ -102,3 +102,6 @@ Assets/OpenAPI.meta
 Assets/Settings.meta
 Assets/Settings
 .idea
+
+!gauge/*.csproj
+!gauge/*.sln
