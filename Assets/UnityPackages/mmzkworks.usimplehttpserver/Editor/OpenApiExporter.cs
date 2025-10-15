@@ -41,24 +41,9 @@ namespace mmzkworks.SimpleHttpServer.OpenApi.Editor
         }
     }
 
-    public sealed class OpenApiExporter : IPreprocessBuildWithReport
+    public sealed class OpenApiExporter
     {
         public int callbackOrder => 0;
-
-        public void OnPreprocessBuild(BuildReport report)
-        {
-            var settings = OpenApiExportSettings.LoadOrCreate();
-            try
-            {
-                Generate(settings);
-                Debug.Log($"[OpenAPI] Generated {settings.outputRelativePath}");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[OpenAPI] Generation failed: {ex}");
-                throw;
-            }
-        }
 
         [MenuItem("Tools/uSimpleHttpServer/Generate OpenAPI YAML")]
         public static void GenerateMenu()
