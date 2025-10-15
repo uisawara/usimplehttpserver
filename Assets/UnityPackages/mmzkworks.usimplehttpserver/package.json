@@ -19,6 +19,10 @@
     {
       "displayName": "OpenApi endpoint",
       "path": "Samples~/OpenApiEndpoint"
+    },
+    {
+      "displayName": "Gauge tests sample",
+      "path": "Samples~/GaugeTestsSample"
     }
   ]
 }
