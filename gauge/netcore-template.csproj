@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+	<EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Gauge.CSharp.Lib" Version="0.12.*" />
+    <PackageReference Include="Shouldly" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>
