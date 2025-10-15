@@ -1,4 +1,7 @@
 #nullable enable
+#if !UNITY_EDITOR
+using System;
+#endif
 using System.Reflection;
 using UnityEngine;
 
