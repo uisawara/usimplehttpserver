@@ -1,4 +1,4 @@
-# SimpleHttpServer for Unity
+# usimplehttpserver : SimpleHttpServer for Unity
 
 !!現在実験的に開発中!!
 Unityアプリにシンプルなhttp APIサーバー機能を持たせるためのpackageです。
