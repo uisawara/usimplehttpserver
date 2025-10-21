@@ -1,28 +1,29 @@
 # usimplehttpserver : SimpleHttpServer for Unity
 
-!!現在実験的に開発中!!
-Unityアプリにシンプルなhttp APIサーバー機能を持たせるためのpackageです。
+Note: This document is a machine translation of the original Japanese README and may contain inaccuracies.
 
-アプリAPIにより他アプリと柔軟に組み合わせ利用できるようにします。
-例えば以下のような用途があります。
-- Webブラウザ, Curl等からアクセスすることでアプリ操作・クエリできる
-- APIを用いたE2Eの自動テストに使う (gaugeのサンプルを添付しています)
-- openapi.yml エンドポイントからAPI仕様を取得してドキュメントを作成する
-- openapi.yml エンドポイントからAI系ツールに情報提供することでAIからアプリ制御しやすくする
-- elgato StreamDeck 等のデバイスへAPI呼び出しボタンを設定することでアプリのショートカット実行に対応する
+!! Currently experimental !!
+This package adds a simple HTTP API server capability to your Unity application.
+
+By exposing app APIs, you can flexibly combine and use your app with other applications. For example:
+- Operate or query the app from a web browser, curl, etc.
+- Use for API-based end-to-end automated tests (a Gauge sample is included)
+- Generate documentation by fetching the API specification from the `openapi.yml` endpoint
+- Provide information to AI tools from the `openapi.yml` endpoint to make AI-driven app control easier
+- Assign API call buttons to devices such as Elgato Stream Deck to trigger app shortcuts
 
 ## Concept
 
-- Unityアプリの既存コードを簡素な手順でAPI公開
-- APIを通して他アプリとの連動性を得る
-- OpenAPI.ymlを通して既存のWeb開発圏のツール・手法を流用可能にする
+- Expose existing Unity app code as APIs with simple steps
+- Gain interoperability with other applications through APIs
+- Leverage existing web development tools and practices via OpenAPI.yml
 
-**やらないこと**
+**Non-goals**
 
-- シンプル。APIサーバー機能のみを扱うことにし、静的ファイル、テンプレートエンジン他、多様な機能を持つ一般的なWebサーバーを目指さない。
-- 単独でAPIをインターネット公開できるレベルのセキュリティ確保を目指さない。
-  - 基本的にはユーザー自身がローカルPC上で用いるのを想定しています。
-- Webブラウザ等からの要求に完全対応するのを目指さず、省略可能なものは極力省略します。
+- Keep it simple. Focus only on API server functionality; do not aim to be a general-purpose web server with static files, template engines, and other features.
+- Do not aim for a security level suitable for publishing APIs directly to the internet.
+  - Primarily intended for local use by the user on their own PC.
+- Do not aim for full compliance with requests from web browsers; omit optional parts wherever possible.
 
 ```mermaid
 graph LR
@@ -33,11 +34,11 @@ c
 svr
 end
 
-s[[c#-routing-attribute]] -->|API仕様情報の付加| c[c# code] -->|export| o[OpenAPI.yml]
+s[[c#-routing-attribute]] -->|add API spec metadata| c[c# code] -->|export| o[OpenAPI.yml]
 o -->|input| og[openapi-generator]
 o -->|input| rd[redoc]
 
-svr[[C#-api-server-script]] -.->|自動列挙| s
+svr[[C#-api-server-script]] -.->|auto enumeration| s
 
 client -->|http| svr
 
@@ -51,26 +52,26 @@ end
 
 ### dependencies
 
-先に以下をimportしておいてください。
+Please import the following first:
 
 - com.cysharp.unitask
-  - インストール方法は公式 https://github.com/Cysharp/UniTask.git を参照ください。
+  - Refer to the official repository `https://github.com/Cysharp/UniTask.git` for installation.
 
 - com.unity.nuget.newtonsoft-json
-  - Package Managerを開き、Install package by name... から com.unity.nuget.newtonsoft-json をインストールします。
+  - Open Package Manager and install by name: `com.unity.nuget.newtonsoft-json`.
 
 
 ### upm
 
-本パッケージは Package Managerを開き、Install package from git URL... から以下をインストールします。
+Install this package from Package Manager via “Install package from git URL...” using the following URL:
 
 ```
 https://github.com/uisawara/usimplehttpserver.git?path=Assets/UnityPackages/mmzkworks.usimplehttpserver
 ```
 
-## コード例
+## Code examples
 
-### サーバーの起動・停止
+### Start/Stop the server
 
 ```c#
 public sealed class SimpleHttpServerBehaviour : MonoBehaviour
@@ -82,26 +83,26 @@ public sealed class SimpleHttpServerBehaviour : MonoBehaviour
     {
         DontDestroyOnLoad(gameObject);
 
-        // HttpServerの起動
+        // Start HttpServer
         server = new SimpleHttpServer(port);
-        // AttributeをもとにしたController登録 (ルーティング設定)
+        // Register controllers based on attributes (routing configuration)
         server.RegisterControllersFrom(Assembly.GetExecutingAssembly());
         server.Start();
     }
 
     private void OnDestroy()
     {
-        // HttpServerの停止
+        // Stop HttpServer
         server?.Stop();
         server = null;
     }
 }
 ```
 
-### URIルーティング設定
+### URI routing
 
-- Attribute設定によりルーティング定義を行います。
-- URLパラメータはメソッド定義と紐づけされます。
+- Define routes via attributes.
+- URL parameters are bound to method parameters.
 
 ```c#
 [RoutePrefix("/api")]
@@ -146,40 +147,40 @@ public sealed class User
 
 ## Sample code
 
-upmにサンプルコードが付属しています。
-Unity EditorでPackage Managerからインポートすることができます。
+Sample code is included with the UPM package.
+You can import it from Package Manager in the Unity Editor.
 
 ### ApplicationStateApiSample
 
-幾つかのサンプルAPI実装が入っています
+Includes several sample API implementations.
 
-| APIエンドポイント | レスポンス                                                   |
-| ----------------- | ------------------------------------------------------------ |
-| /api/echo/{text}  | textで指定されたテキストをエコーバックで返します。           |
-| /api/state        | アプリ状態一式をJSON形式で取得します。                       |
-| /api/state/{key}  | 種類を指定してアプリ状態をJSON形式で取得します。<br />keyには以下が使えます。<br />application: アプリ基本情報<br />environments: アプリの実行時環境変数、コマンドライン引数<br />runtime: 実行時情報 |
+| API Endpoint | Response                                                   |
+| ------------ | ---------------------------------------------------------- |
+| /api/echo/{text}  | Returns the provided text as an echo.                  |
+| /api/state        | Returns the full application state in JSON.           |
+| /api/state/{key}  | Returns the application state in JSON for the specified category.<br />You can use the following for key:<br />application: basic app info<br />environments: runtime environment variables and command-line arguments<br />runtime: runtime info |
 
 ### OpenApi endpoint
 
-これを導入するとAPI経由で OpenAPI Specification 形式のAPI仕様を取得することができるようになります。
-エンドポイントは /openapi.yml です。
+By enabling this, you can obtain the API specification in OpenAPI Specification format via the API.
+The endpoint is `/openapi.yml`.
 
 ### gauge sample
 
-test automation frameworkである [gauge](https://gauge.org/) を用いて、ビルド済バイナリのAPIテストを行うサンプルコードです。
-- ビルド済バイナリに対してコマンドライン引数でサーバー待ち受けポートを指定して起動
-- APIエンドポイントに対してアクセスしてレスポンス検証をしています。
+This is sample code that uses the test automation framework [gauge](https://gauge.org/) to run API tests against a built binary.
+- Launch the built binary with a command-line argument specifying the server listen port
+- Access the API endpoints and validate responses
 
-## APIドキュメント生成 (openapi.yml export)
+## API documentation generation (openapi.yml export)
 
-APIドキュメントの作成を容易にするため OpenAPI yamlのエクスポートができます。
+You can export OpenAPI YAML to make creating API documents easier.
 
-### 使いかた
+### How to use
 
-- Unity EditorのMenuからTools/uSimpleHttpServer/Generate OpenAPI YAML を選択すると、openapi.ymlが出力されます。
-- 一度実行すると Assets/Settings/OpenApiExportSettings が作成されます。
-  - このファイルを編集することで出力設定を変えることができます。
+- From the Unity Editor menu, select Tools/uSimpleHttpServer/Generate OpenAPI YAML to output `openapi.yml`.
+- On first run, `Assets/Settings/OpenApiExportSettings` will be created.
+  - Edit this file to change export settings.
 
 ## About AI Generation
 
-- このリポジトリには生成AIからの出力コードが含まれています。
+- This repository contains code generated by AI.
